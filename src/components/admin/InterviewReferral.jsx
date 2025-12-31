@@ -2,12 +2,13 @@ import { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 
 const InterviewReferral = () => {
-  const { students, addInterviewReferral, performancePoints } = useAuth();
+  const { students, addInterviewReferral, performancePoints, interviewReferrals } = useAuth();
   const [selectedStudent, setSelectedStudent] = useState('');
   const [formData, setFormData] = useState({
     company: '',
     position: '',
     interviewDate: '',
+    interviewEndingInfo: '',
     notes: ''
   });
   const [message, setMessage] = useState('');
@@ -21,6 +22,18 @@ const InterviewReferral = () => {
   const checkEligibility = () => {
     const eligible = students.filter(student => getStudentTotalPoints(student.id) >= 70);
     setEligibleStudents(eligible);
+  };
+
+  const getInterviewStatus = (referral) => {
+    if (referral.interviewDate) {
+      const interviewDateTime = new Date(referral.interviewDate).getTime();
+      const currentDateTime = new Date().getTime();
+      
+      if (currentDateTime > interviewDateTime) {
+        return 'COMPLETED';
+      }
+    }
+    return referral.status;
   };
 
   const handleChange = (e) => {
@@ -58,6 +71,7 @@ const InterviewReferral = () => {
         company: '',
         position: '',
         interviewDate: '',
+        interviewEndingInfo: '',
         notes: ''
       });
       
@@ -155,6 +169,16 @@ const InterviewReferral = () => {
         </div>
         
         <div className="form-group">
+          <label>Interview Ending Info</label>
+          <input
+            type="datetime-local"
+            name="interviewEndingInfo"
+            value={formData.interviewEndingInfo}
+            onChange={handleChange}
+          />
+        </div>
+        
+        <div className="form-group">
           <label>Notes</label>
           <textarea
             name="notes"
@@ -173,6 +197,57 @@ const InterviewReferral = () => {
         
         <button type="submit" className="btn-primary">Create Referral</button>
       </form>
+
+      <div className="referrals-section" style={{ marginTop: '40px' }}>
+        <h2>All Interview Referrals ({interviewReferrals.length})</h2>
+        {interviewReferrals.length === 0 ? (
+          <p>No interview referrals created yet.</p>
+        ) : (
+          <div className="data-table-container">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Student Name</th>
+                  <th>Company</th>
+                  <th>Position</th>
+                  <th>Interview Date</th>
+                  <th>Interview End</th>
+                  <th>Status</th>
+                  <th>Referred On</th>
+                </tr>
+              </thead>
+              <tbody>
+                {interviewReferrals.map(referral => {
+                  const displayStatus = getInterviewStatus(referral);
+                  return (
+                  <tr key={referral.id}>
+                    <td>{referral.studentName}</td>
+                    <td>{referral.company}</td>
+                    <td>{referral.position}</td>
+                    <td>
+                      {referral.interviewDate 
+                        ? new Date(referral.interviewDate).toLocaleString()
+                        : 'Not set'}
+                    </td>
+                    <td>
+                      {referral.interviewEndingInfo 
+                        ? new Date(referral.interviewEndingInfo).toLocaleString()
+                        : 'Not set'}
+                    </td>
+                    <td>
+                      <span className={`status-badge ${displayStatus.toLowerCase()}`}>
+                        {displayStatus}
+                      </span>
+                    </td>
+                    <td>{new Date(referral.referredDate).toLocaleDateString()}</td>
+                  </tr>
+                );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

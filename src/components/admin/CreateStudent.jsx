@@ -1,17 +1,37 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '../../firebase/config';
 
 const CreateStudent = () => {
   const { addStudent } = useAuth();
+  const [domains, setDomains] = useState([]);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     password: '',
     phone: '',
+    internshipDomain: '',
     department: '',
     college: ''
   });
   const [message, setMessage] = useState('');
+
+  // Fetch domains from Firestore
+  useEffect(() => {
+    const fetchDomains = async () => {
+      try {
+        const domainsRef = collection(db, 'internshipDomains');
+        const snapshot = await getDocs(domainsRef);
+        const domainsData = snapshot.docs.map(doc => doc.data().name).sort();
+        setDomains(domainsData);
+      } catch (error) {
+        console.error('Error fetching domains:', error);
+      }
+    };
+    
+    fetchDomains();
+  }, []);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -33,6 +53,7 @@ const CreateStudent = () => {
         email: '',
         password: '',
         phone: '',
+        internshipDomain: '',
         department: '',
         college: ''
       });
@@ -93,6 +114,23 @@ const CreateStudent = () => {
             onChange={handleChange}
             placeholder="Phone number"
           />
+        </div>
+        
+        <div className="form-group">
+          <label>Internship Domain *</label>
+          <select
+            name="internshipDomain"
+            value={formData.internshipDomain}
+            onChange={handleChange}
+            required
+          >
+            <option value="">-- Select Internship Domain --</option>
+            {domains.map((domain, index) => (
+              <option key={index} value={domain}>
+                {domain}
+              </option>
+            ))}
+          </select>
         </div>
         
         <div className="form-group">

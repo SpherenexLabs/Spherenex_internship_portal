@@ -7,6 +7,18 @@ const InterviewStatus = () => {
   const myPoints = performancePoints[currentUser?.id] || [];
   const totalPoints = myPoints.reduce((sum, entry) => sum + entry.points, 0);
 
+  const getInterviewStatus = (referral) => {
+    if (referral.interviewDate) {
+      const interviewDateTime = new Date(referral.interviewDate).getTime();
+      const currentDateTime = new Date().getTime();
+      
+      if (currentDateTime > interviewDateTime) {
+        return 'COMPLETED';
+      }
+    }
+    return referral.status;
+  };
+
   return (
     <div className="section-content">
       <h1>Interview Referral Status</h1>
@@ -39,12 +51,14 @@ const InterviewStatus = () => {
           </div>
         ) : (
           <div className="referrals-list">
-            {myReferrals.map(referral => (
+            {myReferrals.map(referral => {
+              const displayStatus = getInterviewStatus(referral);
+              return (
               <div key={referral.id} className="referral-card">
                 <div className="referral-header">
                   <h3>{referral.company}</h3>
-                  <span className={`status-badge ${referral.status.toLowerCase()}`}>
-                    {referral.status}
+                  <span className={`status-badge ${displayStatus.toLowerCase()}`}>
+                    {displayStatus}
                   </span>
                 </div>
                 <div className="referral-details">
@@ -61,7 +75,8 @@ const InterviewStatus = () => {
                   )}
                 </div>
               </div>
-            ))}
+            );
+            })}
           </div>
         )}
       </div>

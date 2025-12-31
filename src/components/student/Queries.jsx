@@ -93,8 +93,17 @@ const Queries = () => {
                     {query.status}
                   </span>
                 </div>
+                <p><strong>Your Query:</strong></p>
                 <p>{query.description}</p>
                 <small>Submitted: {new Date(query.createdAt).toLocaleString()}</small>
+                
+                {query.reply && (
+                  <div className="admin-reply">
+                    <p><strong>Admin Reply:</strong></p>
+                    <p className="reply-text">{query.reply}</p>
+                    <small>Replied: {new Date(query.repliedAt).toLocaleString()}</small>
+                  </div>
+                )}
               </div>
             ))}
           </div>

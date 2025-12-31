@@ -38,8 +38,10 @@ export const AuthProvider = ({ children }) => {
   const [students, setStudents] = useState([]);
   const [tests, setTests] = useState([]);
   const [performancePoints, setPerformancePoints] = useState({});
+  const [testScores, setTestScores] = useState([]);
   const [interviewReferrals, setInterviewReferrals] = useState([]);
   const [queries, setQueries] = useState([]);
+  const [domains, setDomains] = useState([]);
   const [firestoreError, setFirestoreError] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -82,6 +84,15 @@ export const AuthProvider = ({ children }) => {
           });
           setPerformancePoints(pointsData);
 
+          // Load all test scores for admin
+          const scoresRef = collection(db, 'testScores');
+          const scoresSnapshot = await getDocs(scoresRef);
+          const scoresData = scoresSnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          }));
+          setTestScores(scoresData);
+
           // Load all interview referrals for admin
           const referralsRef = collection(db, 'interviewReferrals');
           const referralsSnapshot = await getDocs(referralsRef);
@@ -99,6 +110,20 @@ export const AuthProvider = ({ children }) => {
             ...doc.data()
           }));
           setQueries(queriesData);
+
+          // Load all internship domains for admin
+          try {
+            const domainsRef = collection(db, 'internshipDomains');
+            const domainsSnapshot = await getDocs(domainsRef);
+            const domainsData = domainsSnapshot.docs.map(doc => ({
+              id: doc.id,
+              ...doc.data()
+            }));
+            setDomains(domainsData);
+          } catch (domainError) {
+            console.error('Error loading domains:', domainError);
+            setDomains([]);
+          }
         } 
         // Student loads only their own data
         else if (userType === 'student') {
@@ -110,6 +135,16 @@ export const AuthProvider = ({ children }) => {
             ...doc.data()
           }));
           setTests(testsData);
+
+          // Load only this student's test scores
+          const scoresRef = collection(db, 'testScores');
+          const studentScoresQuery = query(scoresRef, where('studentId', '==', currentUser.id));
+          const scoresSnapshot = await getDocs(studentScoresQuery);
+          const scoresData = scoresSnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          }));
+          setTestScores(scoresData);
 
           // Load only this student's performance points
           const pointsRef = collection(db, 'performancePoints');
@@ -278,6 +313,31 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const saveTestScore = async (studentId, testId, testTitle, score, totalQuestions, correctAnswers) => {
+    try {
+      console.log('Saving test score...', { studentId, testId, testTitle, score, totalQuestions, correctAnswers });
+      const scoresRef = collection(db, 'testScores');
+      const scoreData = {
+        studentId,
+        testId,
+        testTitle,
+        score,
+        totalQuestions,
+        correctAnswers,
+        submittedAt: new Date().toISOString()
+      };
+      
+      const docRef = await addDoc(scoresRef, scoreData);
+      console.log('Test score saved with ID:', docRef.id);
+      const newScore = { id: docRef.id, ...scoreData };
+      setTestScores([...testScores, newScore]);
+      return newScore;
+    } catch (error) {
+      console.error('Error saving test score:', error);
+      throw error;
+    }
+  };
+
   const addInterviewReferral = async (referral) => {
     try {
       const referralsRef = collection(db, 'interviewReferrals');
@@ -297,12 +357,14 @@ export const AuthProvider = ({ children }) => {
 
   const addQuery = async (query) => {
     try {
+      console.log('Adding query to Firestore:', query);
       const queriesRef = collection(db, 'queries');
       const docRef = await addDoc(queriesRef, {
         ...query,
         status: 'Pending',
         createdAt: new Date().toISOString()
       });
+      console.log('Query added with ID:', docRef.id);
       const newQuery = { 
         id: docRef.id, 
         ...query, 
@@ -313,6 +375,27 @@ export const AuthProvider = ({ children }) => {
       return newQuery;
     } catch (error) {
       console.error('Error adding query:', error);
+      throw error;
+    }
+  };
+
+  const replyToQuery = async (queryId, replyText) => {
+    try {
+      const queryRef = doc(db, 'queries', queryId);
+      await updateDoc(queryRef, {
+        reply: replyText,
+        status: 'Resolved',
+        repliedAt: new Date().toISOString()
+      });
+      
+      // Update local state
+      setQueries(queries.map(q => 
+        q.id === queryId 
+          ? { ...q, reply: replyText, status: 'Resolved', repliedAt: new Date().toISOString() }
+          : q
+      ));
+    } catch (error) {
+      console.error('Error replying to query:', error);
       throw error;
     }
   };
@@ -342,14 +425,43 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const addDomain = async (domainName) => {
+    try {
+      const domainsRef = collection(db, 'internshipDomains');
+      const docRef = await addDoc(domainsRef, {
+        name: domainName,
+        createdAt: new Date().toISOString()
+      });
+      const newDomain = { id: docRef.id, name: domainName, createdAt: new Date().toISOString() };
+      setDomains([...domains, newDomain]);
+      return newDomain;
+    } catch (error) {
+      console.error('Error adding domain:', error);
+      throw error;
+    }
+  };
+
+  const deleteDomain = async (domainId) => {
+    try {
+      const domainRef = doc(db, 'internshipDomains', domainId);
+      await updateDoc(domainRef, { deleted: true });
+      setDomains(domains.filter(d => d.id !== domainId));
+    } catch (error) {
+      console.error('Error deleting domain:', error);
+      throw error;
+    }
+  };
+
   const value = {
     currentUser,
     userType,
     students,
     tests,
     performancePoints,
+    testScores,
     interviewReferrals,
     queries,
+    domains,
     firestoreError,
     loading,
     loginAdmin,
@@ -359,9 +471,13 @@ export const AuthProvider = ({ children }) => {
     addBulkStudents,
     addTest,
     allocatePoints,
+    saveTestScore,
     addInterviewReferral,
     addQuery,
-    updateStudentProfile
+    replyToQuery,
+    updateStudentProfile,
+    addDomain,
+    deleteDomain
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

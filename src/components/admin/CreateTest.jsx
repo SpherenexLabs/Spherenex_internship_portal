@@ -1,8 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '../../firebase/config';
 
 const CreateTest = () => {
   const { addTest } = useAuth();
+  const [domains, setDomains] = useState([]);
+  const [selectedDomain, setSelectedDomain] = useState('');
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -13,6 +17,24 @@ const CreateTest = () => {
   });
   const [currentQuestion, setCurrentQuestion] = useState({ question: '', options: ['', '', '', ''], correctAnswer: 0 });
   const [message, setMessage] = useState('');
+
+  // Fetch unique internship domains from internshipDomains collection
+  useEffect(() => {
+    const fetchDomains = async () => {
+      try {
+        const domainsRef = collection(db, 'internshipDomains');
+        const snapshot = await getDocs(domainsRef);
+        const domainsData = snapshot.docs.map(doc => doc.data().name).sort();
+        
+        setDomains(domainsData);
+      } catch (error) {
+        console.error('Error fetching domains:', error);
+        setMessage('Error loading domains');
+      }
+    };
+    
+    fetchDomains();
+  }, []);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -52,14 +74,24 @@ const CreateTest = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    if (!selectedDomain) {
+      setMessage('Please select a domain for this test');
+      return;
+    }
+    
     if (!formData.title || !formData.duration || !formData.totalMarks || formData.questions.length === 0) {
       setMessage('Please fill all required fields and add at least one question');
       return;
     }
 
     try {
-      await addTest(formData);
+      const testData = {
+        ...formData,
+        domain: selectedDomain
+      };
+      await addTest(testData);
       setMessage('Test created successfully in Firestore!');
+      setSelectedDomain('');
       setFormData({
         title: '',
         description: '',
@@ -81,6 +113,22 @@ const CreateTest = () => {
       <h1>Create Test</h1>
       
       <form onSubmit={handleSubmit} className="form-container">
+        <div className="form-group">
+          <label>Select Domain *</label>
+          <select
+            value={selectedDomain}
+            onChange={(e) => setSelectedDomain(e.target.value)}
+            required
+          >
+            <option value="">-- Select Internship Domain --</option>
+            {domains.map((domain, index) => (
+              <option key={index} value={domain}>
+                {domain}
+              </option>
+            ))}
+          </select>
+        </div>
+
         <div className="form-group">
           <label>Test Title *</label>
           <input
@@ -113,6 +161,7 @@ const CreateTest = () => {
               value={formData.duration}
               onChange={handleChange}
               required
+              min="0"
               placeholder="60"
             />
           </div>
@@ -125,6 +174,7 @@ const CreateTest = () => {
               value={formData.totalMarks}
               onChange={handleChange}
               required
+              min="0"
               placeholder="100"
             />
           </div>

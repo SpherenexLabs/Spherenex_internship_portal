@@ -17,8 +17,8 @@ const BulkCreateStudent = () => {
     try {
       const lines = csvData.trim().split('\n');
       const students = lines.map(line => {
-        const [name, email, password, phone, department, college] = line.split(',').map(s => s.trim());
-        return { name, email, password, phone, department, college };
+        const [name, email, password, phone, internshipDomain, department, college] = line.split(',').map(s => s.trim());
+        return { name, email, password, phone, internshipDomain, department, college };
       });
 
       const validStudents = students.filter(s => s.name && s.email && s.password);
@@ -79,9 +79,9 @@ const BulkCreateStudent = () => {
       <div className="info-box">
         <h3>Format Instructions:</h3>
         <p>Enter one student per line in CSV format:</p>
-        <code>Name, Email, Password, Phone, Department, College</code>
+        <code>Name, Email, Password, Phone, Internship Domain, Department, College</code>
         <p style={{ marginTop: '10px' }}>Example:</p>
-        <code>John Doe, john@example.com, pass123, 1234567890, CS, XYZ College</code>
+        <code>John Doe, john@example.com, pass123, 1234567890, Web Development, CS, XYZ College</code>
       </div>
 
       <form onSubmit={handleSubmit} className="form-container">
@@ -100,7 +100,7 @@ const BulkCreateStudent = () => {
             value={csvData}
             onChange={(e) => setCsvData(e.target.value)}
             rows="10"
-            placeholder="John Doe, john@example.com, pass123, 1234567890, CS, XYZ College&#10;Jane Smith, jane@example.com, pass456, 0987654321, IT, ABC College"
+            placeholder="John Doe, john@example.com, pass123, 1234567890, Web Development, CS, XYZ College&#10;Jane Smith, jane@example.com, pass456, 0987654321, Data Science, IT, ABC College"
           />
         </div>
         
